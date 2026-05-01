@@ -5,9 +5,18 @@ import SymptomHistory from '../models/SymptomHistory';
 
 const router = Router();
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+// Lazy initializer — avoids crashing at startup when key is a placeholder
+let _openai: OpenAI | null = null;
+function getOpenAI(): OpenAI {
+  if (!_openai) {
+    const key = process.env.OPENAI_API_KEY;
+    if (!key || key.startsWith('sk-your')) {
+      throw new Error('OPENAI_API_KEY is not configured. Please add a real key to server/.env');
+    }
+    _openai = new OpenAI({ apiKey: key });
+  }
+  return _openai;
+}
 
 const SYSTEM_PROMPT = `You are MediBud, a medical assistant AI. Based on the symptoms provided, give a structured response with: 1) Likely diagnosis (1-2 possibilities), 2) Suggested over-the-counter medicines with dosage, 3) Severity level (mild/moderate/severe), 4) Whether the patient should see a doctor urgently. Always end with: 'This is not a substitute for professional medical advice. Please consult a doctor for proper diagnosis.' Format your response as JSON with keys: diagnosis, medicines (array of {name, dosage, frequency, notes}), severity, seeDoctor (boolean), disclaimer.`;
 
@@ -24,6 +33,9 @@ router.post('/analyze', auth, async (req: AuthRequest, res: Response) => {
     let userMessage = `Symptoms: ${symptoms.join(', ')}`;
     if (patientAge) userMessage += `\nPatient Age: ${patientAge}`;
     if (patientGender) userMessage += `\nPatient Gender: ${patientGender}`;
+
+    // Resolve OpenAI client (throws clear error if key is missing)
+    const openai = getOpenAI();
 
     const completion = await openai.chat.completions.create({
       model: 'gpt-4o',
