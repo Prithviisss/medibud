@@ -1,21 +1,21 @@
 import { Router, Response } from 'express';
-import OpenAI from 'openai';
+import { GoogleGenAI } from '@google/genai';
 import { auth, AuthRequest } from '../middleware/auth';
 import SymptomHistory from '../models/SymptomHistory';
 
 const router = Router();
 
 // Lazy initializer — avoids crashing at startup when key is a placeholder
-let _openai: OpenAI | null = null;
-function getOpenAI(): OpenAI {
-  if (!_openai) {
-    const key = process.env.OPENAI_API_KEY;
-    if (!key || key.startsWith('sk-your')) {
-      throw new Error('OPENAI_API_KEY is not configured. Please add a real key to server/.env');
+let _ai: GoogleGenAI | null = null;
+function getAI(): GoogleGenAI {
+  if (!_ai) {
+    const key = process.env.GEMINI_API_KEY;
+    if (!key || key.startsWith('your_gemini')) {
+      throw new Error('GEMINI_API_KEY is not configured. Please add a real key to server/.env');
     }
-    _openai = new OpenAI({ apiKey: key });
+    _ai = new GoogleGenAI({ apiKey: key });
   }
-  return _openai;
+  return _ai;
 }
 
 const SYSTEM_PROMPT = `You are MediBud, a medical assistant AI. Based on the symptoms provided, give a structured response with: 1) Likely diagnosis (1-2 possibilities), 2) Suggested over-the-counter medicines with dosage, 3) Severity level (mild/moderate/severe), 4) Whether the patient should see a doctor urgently. Always end with: 'This is not a substitute for professional medical advice. Please consult a doctor for proper diagnosis.' Format your response as JSON with keys: diagnosis, medicines (array of {name, dosage, frequency, notes}), severity, seeDoctor (boolean), disclaimer.`;
@@ -34,20 +34,20 @@ router.post('/analyze', auth, async (req: AuthRequest, res: Response) => {
     if (patientAge) userMessage += `\nPatient Age: ${patientAge}`;
     if (patientGender) userMessage += `\nPatient Gender: ${patientGender}`;
 
-    // Resolve OpenAI client (throws clear error if key is missing)
-    const openai = getOpenAI();
+    // Resolve Gemini client (throws clear error if key is missing)
+    const ai = getAI();
 
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-4o',
-      messages: [
-        { role: 'system', content: SYSTEM_PROMPT },
-        { role: 'user', content: userMessage },
-      ],
-      response_format: { type: 'json_object' },
-      temperature: 0.4,
+    const response = await ai.models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: userMessage,
+      config: {
+        systemInstruction: SYSTEM_PROMPT,
+        responseMimeType: 'application/json',
+        temperature: 0.4,
+      }
     });
 
-    const rawContent = completion.choices[0].message.content || '{}';
+    const rawContent = response.text || '{}';
     const aiResponse = JSON.parse(rawContent) as {
       diagnosis: string;
       medicines: { name: string; dosage: string; frequency: string; notes: string }[];
