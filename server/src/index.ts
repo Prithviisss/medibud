@@ -39,6 +39,7 @@ app.use(errorHandler);
 const MONGODB_URI = process.env.MONGODB_URI || '';
 
 if (MONGODB_URI) {
+  mongoose.set('debug', true);
   mongoose
     .connect(MONGODB_URI)
     .then(() => console.log('MongoDB connected'))
