@@ -324,7 +324,7 @@ export default function PrescriptionsPage() {
                           alt="Prescription Thumbnail" 
                           onClick={(e) => {
                             e.stopPropagation();
-                            setViewingImageUrl(p.imageUrl);
+                            setViewingImageUrl(p.imageUrl || null);
                           }}
                           style={{ 
                             width: 44, 
@@ -395,7 +395,7 @@ export default function PrescriptionsPage() {
                             <button 
                               onClick={(e) => { 
                                 e.stopPropagation(); 
-                                setViewingImageUrl(p.imageUrl); 
+                                setViewingImageUrl(p.imageUrl || null); 
                               }} 
                               style={{ 
                                 padding: '6px 14px', 
