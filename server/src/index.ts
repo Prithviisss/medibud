@@ -13,8 +13,20 @@ dotenv.config();
 
 const app = express();
 
-app.use(cors());
-app.use(express.json());
+// Trust Render's reverse proxy (needed for HTTPS + correct IP forwarding)
+app.set('trust proxy', 1);
+
+// CORS — allow the frontend origin (set CORS_ORIGIN env var in production)
+const allowedOrigin = process.env.CORS_ORIGIN || '*';
+app.use(
+  cors({
+    origin: allowedOrigin,
+    credentials: true,
+  })
+);
+
+app.use(express.json({ limit: '10mb' }));
+app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 
 // Routes
 app.get('/api/health', (_req, res) => {
